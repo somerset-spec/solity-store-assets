@@ -68,6 +68,18 @@
         disc + '</div>';
     }).join('');
     mount.innerHTML = '<div style="' + S.wrap + '">' + head + '<div style="' + S.grid + '">' + cards + '</div></div>';
+    updateTabCount(sum.count);
+  }
+
+  // 상품 상세 탭 Review 카운트 배지 갱신 (cafe24 기본 게시판 0 → 위젯 집계)
+  function updateTabCount(count) {
+    try {
+      var links = document.querySelectorAll('a[name="use_review"]');
+      for (var i = 0; i < links.length; i++) {
+        var sp = links[i].querySelector('span');
+        if (sp) sp.textContent = count;
+      }
+    } catch (e) {}
   }
 
   function run() {

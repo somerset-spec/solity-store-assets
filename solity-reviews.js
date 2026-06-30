@@ -71,7 +71,9 @@
   }
 
   function run() {
-    mount = document.getElementById('solity-reviews');
+    // Detail 상세설명 + Review 탭 둘 다 div가 있을 수 있음 → 마지막(Review 탭) 우선 마운트
+    var els = document.querySelectorAll('[id="solity-reviews"]');
+    mount = els.length ? els[els.length - 1] : null;
     if (!mount) return false; // EZ 모듈 아직 미렌더 → poll 재시도
     if (mount.getAttribute('data-osc-rendered')) return true; // 중복 실행 방지(script 2개 대비)
     mount.setAttribute('data-osc-rendered', '1');

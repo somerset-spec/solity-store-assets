@@ -131,7 +131,6 @@
     clientId = mount.getAttribute('data-client') || '';
     if (!clientId) { setState('error'); return true; }
     setState('loading');
-    hideBoard();
     fetchPage(true);
     return true;
   }

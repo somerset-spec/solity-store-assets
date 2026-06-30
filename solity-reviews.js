@@ -1,20 +1,19 @@
 /*
- * 솔리티 자사몰 — OSC 자체 리뷰 위젯 [틀]
- * 카페24 스마트디자인 상품상세에 인라인 임베드.
+ * 솔리티 자사몰 — OSC 자체 리뷰 위젯
+ * 카페24 EZ 스마트디자인 상품상세에 임베드.
  *   마운트: <div id="solity-reviews" data-client="{clientId}" data-product="SC400"></div>
  *   data-client = CRM Clients rec-id (테넌트 키, 멀티 클라 리뷰 격리).
  * - PR-A `GET {API_BASE}/api/reviews/{clientId}/{productId}` 호출 → 별점·포토·체험단 라벨·쿠팡 집계 렌더
  * - vanilla JS (카페24 jQuery 충돌 회피, $ 미사용). 상태: 로딩/빈/에러/목록
  * - 가짜 후기 0: 서버가 isDisplayed=true만 반환. 평균=전수(서버 계산). 체험단=협찬 라벨 노출.
- * 최종 수정 2026-06-18
+ * - ★EZ 모듈은 div를 동적(innerHTML)으로 렌더하므로 DOM ready 후 div polling으로 마운트.
+ *   script는 EZ 모듈 밖(layout head/body)에 둬야 실행됨(EZ 모듈 안 script는 innerHTML=미실행).
+ * 최종 수정 2026-06-30
  */
 (function () {
   'use strict';
-  var API_BASE = 'https://marketing.5funnel.com'; // 배포 도메인 (확정 시 교체)
-  var mount = document.getElementById('solity-reviews');
-  if (!mount) return;
-  var productId = mount.getAttribute('data-product') || 'SC400';
-  var clientId = mount.getAttribute('data-client') || '';
+  var API_BASE = 'https://marketing.5funnel.com';
+  var mount, productId, clientId;
 
   var S = {
     wrap: 'font-family:Pretendard,sans-serif;color:#1a2233;',
@@ -29,6 +28,7 @@
   function stars(n) { n = Math.round(n || 0); return '★★★★★☆☆☆☆☆'.slice(5 - Math.min(5, n), 10 - Math.min(5, n)); }
 
   function render(state, data) {
+    if (!mount) return;
     if (state === 'loading') {
       mount.innerHTML = '<div style="' + S.wrap + S.muted + 'padding:24px 0">후기를 불러오는 중…</div>';
       return;
@@ -70,10 +70,31 @@
     mount.innerHTML = '<div style="' + S.wrap + '">' + head + '<div style="' + S.grid + '">' + cards + '</div></div>';
   }
 
-  if (!clientId) { render('error'); return; } // 테넌트(data-client) 미지정 → 조회 불가
-  render('loading');
-  fetch(API_BASE + '/api/reviews/' + encodeURIComponent(clientId) + '/' + encodeURIComponent(productId), { credentials: 'omit' })
-    .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
-    .then(function (data) { render('list', data); })
-    .catch(function () { render('error'); });
+  function run() {
+    mount = document.getElementById('solity-reviews');
+    if (!mount) return false; // EZ 모듈 아직 미렌더 → poll 재시도
+    if (mount.getAttribute('data-osc-rendered')) return true; // 중복 실행 방지(script 2개 대비)
+    mount.setAttribute('data-osc-rendered', '1');
+    productId = mount.getAttribute('data-product') || 'SC400';
+    clientId = mount.getAttribute('data-client') || '';
+    if (!clientId) { render('error'); return true; }
+    render('loading');
+    fetch(API_BASE + '/api/reviews/' + encodeURIComponent(clientId) + '/' + encodeURIComponent(productId), { credentials: 'omit' })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (data) { render('list', data); })
+      .catch(function () { render('error'); });
+    return true;
+  }
+
+  // EZ 동적 div 렌더 대기: DOM ready 후 최대 ~12s polling
+  var tries = 0;
+  function poll() {
+    if (run()) return;
+    if (++tries < 40) setTimeout(poll, 300);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', poll);
+  } else {
+    poll();
+  }
 })();

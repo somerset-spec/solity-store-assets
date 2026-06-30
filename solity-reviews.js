@@ -45,7 +45,7 @@
       '<span style="' + S.star + 'font-size:15px">' + stars(r.rating) + '</span>' + label + '</div>' +
       photo +
       (r.title ? '<div style="font-weight:700;margin-top:12px">' + esc(r.title) + '</div>' : '') +
-      '<p style="font-size:14px;line-height:1.6;margin-top:8px">' + esc(r.body) + '</p>' +
+      '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-line;word-break:keep-all">' + esc(r.body) + '</p>' +
       '<div style="' + S.muted + 'margin-top:10px">— ' + esc(r.authorMasked || '구매 고객') + '</div>' +
       disc + '</div>';
   }

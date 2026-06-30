@@ -52,6 +52,17 @@
   function mountWidget(mount) {
     if (mount.getAttribute('data-osc-rendered')) return;
     mount.setAttribute('data-osc-rendered', '1');
+    // Detail 탭(prdDetail) 위젯은 "제품 등록 방법" 섹션 다음으로 이동
+    // (cafe24 description PUT이 div 위치 변경을 무시 → DOM 이동으로 우회)
+    try {
+      var pd = mount.closest('#prdDetail');
+      if (pd) {
+        var secs = pd.querySelectorAll('section');
+        for (var k = 0; k < secs.length; k++) {
+          if (/제품\s*등록\s*방법/.test(secs[k].textContent)) { secs[k].parentNode.insertBefore(mount, secs[k].nextSibling); break; }
+        }
+      }
+    } catch (e) {}
     var st = { page: 1, sort: 'recent', reviews: [], hasMore: false, summary: { count: 0, avg: 0, photoCount: 0 }, loading: false };
     var productId = mount.getAttribute('data-product') || 'SC400';
     var clientId = mount.getAttribute('data-client') || '';

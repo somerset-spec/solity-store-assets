@@ -133,6 +133,33 @@
 
   var tries = 0;
   function poll() { if (run()) return; if (++tries < 40) setTimeout(poll, 300); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poll);
-  else poll();
+
+  // cafe24 쇼핑몰 공통 이용안내의 빈 "교환 및 반품 주소 -" 블록 제거 (반품주소 미설정 시 노출되는 placeholder)
+  function hideEmptyExchangeAddr() {
+    try {
+      var strongs = document.querySelectorAll('#prdInfo .detail_guide .info strong');
+      for (var i = 0; i < strongs.length; i++) {
+        var s = strongs[i];
+        if (s.textContent.replace(/\s/g, '') === '교환및반품주소') {
+          // 값이 비어("-")있을 때만 제거 — 다음 <strong> 전까지의 텍스트에 주소가 없으면 빈 것
+          var scan = s.nextSibling, filled = false;
+          while (scan && !(scan.nodeType === 1 && scan.tagName === 'STRONG')) {
+            var t = (scan.textContent || '').replace(/[\s\-·]/g, '');
+            if (t) { filled = true; break; }
+            scan = scan.nextSibling;
+          }
+          if (!filled) {
+            var n = s.nextSibling; s.remove();
+            while (n && !(n.nodeType === 1 && n.tagName === 'STRONG')) { var x = n; n = n.nextSibling; if (x.parentNode) x.parentNode.removeChild(x); }
+          }
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+  var et = 0;
+  function exchPoll() { hideEmptyExchangeAddr(); if (++et < 30) setTimeout(exchPoll, 400); }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { poll(); exchPoll(); });
+  else { poll(); exchPoll(); }
 })();

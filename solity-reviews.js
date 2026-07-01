@@ -157,8 +157,20 @@
       }
     } catch (e) {}
   }
+  // Return & Delivery(#prdInfo) 상단 조상 .contents의 과도한 margin-top(~230px) 축소
+  function fixGuideTopMargin() {
+    try {
+      var pi = document.querySelector('#prdInfo');
+      if (!pi) return;
+      var el = pi.parentElement;
+      while (el && el !== document.body) {
+        if (parseFloat(getComputedStyle(el).marginTop) > 120) { el.style.marginTop = '40px'; return; }
+        el = el.parentElement;
+      }
+    } catch (e) {}
+  }
   var et = 0;
-  function exchPoll() { hideEmptyExchangeAddr(); if (++et < 30) setTimeout(exchPoll, 400); }
+  function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { poll(); exchPoll(); });
   else { poll(); exchPoll(); }

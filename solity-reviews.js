@@ -10,6 +10,14 @@
   'use strict';
   var API_BASE = 'https://marketing.5funnel.com';
 
+  // Return & Delivery 4-fold 첫 행(PAYMENT/DELIVERY) 상단 정렬
+  // (cafe24 기본은 :first-child만 margin-top:0 → flex 2열에서 첫 행 우측 fold가 30px 밀림)
+  try {
+    var _gcss = document.createElement('style');
+    _gcss.textContent = '#prdInfo .detail_guide .ec-base-fold:nth-child(-n+2){margin-top:0 !important}';
+    (document.head || document.documentElement).appendChild(_gcss);
+  } catch (e) {}
+
   var S = {
     wrap: 'font-family:Pretendard,sans-serif;color:#1a2233;',
     star: 'color:#ffce4d;letter-spacing:1px;',

@@ -196,9 +196,10 @@
     } catch (e) {}
   }
 
-  // 2026-10-23: conversion UX layer — benefit lines, Korean tab labels, group-buy countdown, light scroll motion.
+  // 2026-10-23: conversion UX layer — benefit lines, Korean tab labels, group-buy countdown, one-shot card fade.
   // Truthful only: every line states a real store fact; the countdown runs to the group-buy end printed on its banner.
-  var GROUPBUY_END = { '32': '2026-10-26T23:59:59+09:00' };
+  // Group-buy products (product_no → end): no discount coupon ever applies to them (owner rule), so no coupon line.
+  var GROUPBUY = { '32': '2026-10-26T23:59:59+09:00' };
   function productNo() {
     var m = location.search.match(/product_no=(\d+)/) || location.pathname.match(/\/(\d+)\/?(?:category|$)/);
     return m ? m[1] : '';
@@ -208,30 +209,30 @@
     var css = document.createElement('style');
     css.id = 'osc-ux-css';
     css.textContent =
-      '.osc-reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}' +
-      '.osc-reveal.osc-on{opacity:1;transform:none}' +
+      '@keyframes osc-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}' +
+      '.osc-in{animation:osc-in .5s cubic-bezier(.2,.7,.2,1) both}' +
       '.osc-benefits{display:grid;gap:8px;margin:0 0 16px}' +
       '.osc-benefit{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;background:#f4f7ff;font:600 14px/1.4 Pretendard,sans-serif;color:#1a2233;word-break:keep-all}' +
       '.osc-benefit i{font-style:normal;font-size:17px}' +
       '.osc-countdown{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#00112c;color:#fff;font:700 14px/1.4 Pretendard,sans-serif;display:flex;justify-content:space-between;align-items:center}' +
       '.osc-countdown b{font-variant-numeric:tabular-nums;color:#ffd84d;font-size:16px}' +
-      '@media (prefers-reduced-motion:reduce){.osc-reveal{opacity:1;transform:none;transition:none}}';
+      '@media (prefers-reduced-motion:reduce){.osc-in{animation:none}}';
     document.head.appendChild(css);
   }
   function mountBenefits() {
     var after = document.querySelector('.osc-topreview') || document.querySelector('.infoArea .headingArea');
     if (!after || document.querySelector('.osc-benefits')) return !!document.querySelector('.osc-benefits');
     var box = document.createElement('div');
-    box.className = 'osc-benefits osc-reveal';
+    var end = GROUPBUY[productNo()];
+    box.className = 'osc-benefits osc-in';
     box.innerHTML =
-      '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>' +
+      (end ? '' : '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>') +
       '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>' +
       '<div class="osc-benefit"><i>🛡️</i>솔리티 공식 인증 판매처 · A/S는 제조사가 직접</div>';
     after.parentNode.insertBefore(box, after.nextSibling);
-    var end = GROUPBUY_END[productNo()];
     if (end && Date.now() < Date.parse(end)) {
       var cd = document.createElement('div');
-      cd.className = 'osc-countdown osc-reveal';
+      cd.className = 'osc-countdown osc-in';
       after.parentNode.insertBefore(cd, box);
       var tick = function () {
         var s = Math.max(0, Math.floor((Date.parse(end) - Date.now()) / 1000));
@@ -254,25 +255,8 @@
       if (num) num.style.display = num.textContent.trim() === '0' ? 'none' : '';
     }
   }
-  var observer = null;
-  function reveal() {
-    if (!('IntersectionObserver' in window)) { document.querySelectorAll('.osc-reveal').forEach(function (e) { e.classList.add('osc-on'); }); return; }
-    if (!observer) {
-      observer = new IntersectionObserver(function (es) {
-        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('osc-on'); observer.unobserve(e.target); } });
-      }, { rootMargin: '0px 0px -8% 0px' });
-      // a fast fling or anchor jump can skip past a block without it ever intersecting — never leave content invisible
-      window.addEventListener('scroll', function () {
-        document.querySelectorAll('.osc-reveal:not(.osc-on)').forEach(function (el) {
-          if (el.getBoundingClientRect().top < window.innerHeight) { el.classList.add('osc-on'); observer.unobserve(el); }
-        });
-      }, { passive: true });
-    }
-    document.querySelectorAll('#prdDetail section, #prdDetail .story, #prdDetail .cont > img, .osc-benefits, .osc-countdown').forEach(function (el) {
-      if (el.dataset.oscRev) return; el.dataset.oscRev = '1'; el.classList.add('osc-reveal'); observer.observe(el);
-    });
-  }
-  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); reveal(); return ok; } catch (e) { return true; } }
+  // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
+  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); return ok; } catch (e) { return true; } }
 
   var tries = 0;
   function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); var c = uxEnhance(); if (a && b && c && document.querySelector('.osc-topreview a')) { koreanTabs(); return; } if (++tries < 40) setTimeout(poll, 300); }

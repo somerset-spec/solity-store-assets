@@ -225,7 +225,7 @@
     box.className = 'osc-benefits osc-reveal';
     box.innerHTML =
       '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>' +
-      '<div class="osc-benefit"><i>🚚</i>무료배송</div>' +
+      '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>' +
       '<div class="osc-benefit"><i>🛡️</i>솔리티 공식 인증 판매처 · A/S는 제조사가 직접</div>';
     after.parentNode.insertBefore(box, after.nextSibling);
     var end = GROUPBUY_END[productNo()];

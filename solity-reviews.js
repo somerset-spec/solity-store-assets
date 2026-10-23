@@ -255,8 +255,26 @@
       if (num) num.style.display = num.textContent.trim() === '0' ? 'none' : '';
     }
   }
+  // 10-23 (Esther Mall benchmark): Korean buy buttons, site-wide first-purchase bar (skin already shows the discount %)
+  function koreanButtons() {
+    var map = { 'BUY IT NOW': '바로구매', 'CART': '장바구니 담기', 'WISH LIST': '찜하기' };
+    var els = document.querySelectorAll('#actionBuy, .actionCart, [id^="actionWish"], .xans-product-action button, .xans-product-action a');
+    for (var i = 0; i < els.length; i++) {
+      var t = els[i].childNodes;
+      for (var j = 0; j < t.length; j++) if (t[j].nodeType === 3 && map[t[j].textContent.trim()]) t[j].textContent = map[t[j].textContent.trim()];
+    }
+  }
+  function firstBuyBar() {
+    if (GROUPBUY[productNo()] || document.querySelector('.osc-topbar')) return;
+    var bar = document.createElement('a');
+    bar.className = 'osc-topbar';
+    bar.href = '/member/agreement.html';
+    bar.style.cssText = 'display:block;background:#00112c;color:#fff;text-align:center;font:600 13px/1.4 Pretendard,sans-serif;padding:10px 16px;text-decoration:none;word-break:keep-all';
+    bar.innerHTML = '<span style="color:#ffd84d">첫 구매 3,000원 할인</span> · 회원가입하면 바로 드려요 →';
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
-  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); return ok; } catch (e) { return true; } }
+  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); return ok; } catch (e) { return true; } }
 
   var tries = 0;
   function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); var c = uxEnhance(); if (a && b && c && document.querySelector('.osc-topreview a')) { koreanTabs(); return; } if (++tries < 40) setTimeout(poll, 300); }
@@ -299,6 +317,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { poll(); exchPoll(); });
-  else { poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); } catch (e) {} poll(); exchPoll(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

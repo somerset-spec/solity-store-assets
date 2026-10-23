@@ -33,8 +33,8 @@
   function stars(n) { n = Math.round(n || 0); return '★★★★★☆☆☆☆☆'.slice(5 - Math.min(5, n), 10 - Math.min(5, n)); }
 
   function card(r) {
-    var label = r.displayLabel ? '<span style="' + S.badge + '">' + esc(r.displayLabel) + '</span>' :
-      (r.isSponsored ? '<span style="' + S.badge + '">체험단 제공</span>' : '');
+    // 2026-10-23: no marketplace name on the badge (owner request) — only the sponsored-review disclosure stays
+    var label = r.isSponsored ? '<span style="' + S.badge + '">체험단 제공</span>' : '';
     var photo = (r.photos && r.photos[0]) ?
       '<img src="' + esc(r.photos[0]) + '" alt="후기 사진" style="width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:10px;margin-top:12px" loading="lazy"/>' : '';
     var disc = r.isSponsored ? '<div style="' + S.muted + 'margin-top:8px;font-size:11.5px">※ 제품을 무상 제공받아 작성된 후기입니다.</div>' : '';
@@ -105,7 +105,8 @@
       }
       var cards = st.reviews.map(card).join('');
       var more = st.hasMore ? '<button class="osc-more" style="' + S.more + '">후기 더보기 (+)</button>' : '';
-      mount.innerHTML = '<div style="' + S.wrap + '">' + head + '<div style="' + S.grid + '">' + cards + '</div>' + more + '</div>';
+      var note = '<div style="' + S.muted + 'font-size:12px;margin-top:14px">※ 솔리티 SC400을 구매한 고객의 후기를 판매처 구분 없이 모아 보여 드립니다.</div>';
+      mount.innerHTML = '<div style="' + S.wrap + '">' + head + '<div style="' + S.grid + '">' + cards + '</div>' + more + note + '</div>';
       bindSort();
       var btn = mount.querySelector('.osc-more');
       if (btn) btn.onclick = function () { if (st.loading) return; st.page += 1; fetchPage(false); };
@@ -139,8 +140,59 @@
     return els.length > 0;
   }
 
+  // 2026-10-23: rating summary + 3 short reviews right under the product title (reviews used to sit ~50 screens down)
+  function mountTopSummary() {
+    var heading = document.querySelector('.infoArea .headingArea');
+    var src = document.querySelector('[id="solity-reviews"]');
+    if (!heading || !src || document.querySelector('.osc-topreview')) return !!heading;
+    var box = document.createElement('div');
+    box.className = 'osc-topreview';
+    box.style.cssText = S.wrap + 'margin:10px 0 14px;opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s ease;';
+    heading.parentNode.insertBefore(box, heading.nextSibling);
+    var clientId = src.getAttribute('data-client') || '', productId = src.getAttribute('data-product') || 'SC400';
+    fetch(API_BASE + '/api/reviews/' + encodeURIComponent(clientId) + '/' + encodeURIComponent(productId) + '?page=1&sort=rating', { credentials: 'omit' })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (data) {
+        var sum = data.summary || {};
+        if (!sum.count) { box.remove(); return; }
+        var picks = (data.reviews || []).filter(function (r) { var n = (r.body || '').trim().length; return r.rating >= 5 && n >= 20 && n <= 140; }).slice(0, 3);
+        var chips = picks.map(function (r) {
+          var t = (r.body || '').trim().replace(/\s+/g, ' ');
+          if (t.length > 58) t = t.slice(0, 58) + '…';
+          return '<div style="flex:0 0 78%;max-width:260px;scroll-snap-align:start;background:#f7f9fc;border:1px solid #e7ebf3;border-radius:12px;padding:12px 14px">' +
+            '<div style="' + S.star + 'font-size:12px">★★★★★</div>' +
+            '<div style="font-size:13px;line-height:1.55;margin-top:4px;word-break:keep-all;color:#1a2233">' + esc(t) + '</div></div>';
+        }).join('');
+        box.innerHTML =
+          '<a href="#none" class="osc-topreview-link" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#1a2233">' +
+          '<span style="' + S.star + 'font-size:17px">' + stars(sum.avg) + '</span>' +
+          '<b style="font-size:16px">' + Number(sum.avg).toFixed(1) + '</b>' +
+          '<span style="font-size:14px;color:#5b6577;text-decoration:underline">구매 후기 ' + Number(sum.count).toLocaleString() + '건</span>' +
+          '<span style="font-size:14px;color:#5b6577">›</span></a>' +
+          (chips ? '<div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin-top:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch">' + chips + '</div>' : '');
+        box.querySelector('.osc-topreview-link').onclick = function (e) {
+          e.preventDefault();
+          var target = document.querySelector('#prdDetail [id="solity-reviews"]') || document.querySelector('[id="solity-reviews"]');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        requestAnimationFrame(function () { box.style.opacity = '1'; box.style.transform = 'none'; });
+      })
+      .catch(function () { box.remove(); });
+    return true;
+  }
+
+  // 2026-10-23: internal editor note leaked into the product description — hide it until the description is cleaned
+  function hideInternalNotes() {
+    try {
+      var ps = document.querySelectorAll('#prdDetail p, #prdDetail div, #prdDetail span');
+      for (var i = 0; i < ps.length; i++) {
+        if (ps[i].children.length === 0 && /Drive 보유 상세|OSC 확정/.test(ps[i].textContent)) ps[i].style.display = 'none';
+      }
+    } catch (e) {}
+  }
+
   var tries = 0;
-  function poll() { if (run()) return; if (++tries < 40) setTimeout(poll, 300); }
+  function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); if (a && b) return; if (++tries < 40) setTimeout(poll, 300); }
 
   // cafe24 쇼핑몰 공통 이용안내의 빈 "교환 및 반품 주소 -" 블록 제거 (반품주소 미설정 시 노출되는 placeholder)
   function hideEmptyExchangeAddr() {

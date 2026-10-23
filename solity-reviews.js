@@ -200,6 +200,8 @@
   // Truthful only: every line states a real store fact; the countdown runs to the group-buy end printed on its banner.
   // Group-buy products (product_no → end): no discount coupon ever applies to them (owner rule), so no coupon line.
   var GROUPBUY = { '32': '2026-10-26T23:59:59+09:00' };
+  // Single-unit product → its 2-pack product (owner 10-23: 2대 128,000원)
+  var BUNDLE = { '28': { no: '33', text: '2대 세트로 사면 1대당 64,000원 (128,000원)' } };
   function productNo() {
     var m = location.search.match(/product_no=(\d+)/) || location.pathname.match(/\/(\d+)\/?(?:category|$)/);
     return m ? m[1] : '';
@@ -229,6 +231,9 @@
       (end ? '' : '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>') +
       '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>' +
       '<div class="osc-benefit"><i>🛡️</i>솔리티 공식 인증 판매처 · A/S는 제조사가 직접</div>';
+    var pack = BUNDLE[productNo()];
+    if (pack) box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="/product/detail.html?product_no=' + pack.no +
+      '" style="background:#00112c;color:#fff;text-decoration:none"><i>📦</i>' + pack.text + ' <b style="margin-left:auto;color:#ffd84d">보기 ›</b></a>');
     after.parentNode.insertBefore(box, after.nextSibling);
     if (end && Date.now() < Date.parse(end)) {
       var cd = document.createElement('div');

@@ -32,18 +32,23 @@
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
   function stars(n) { n = Math.round(n || 0); return '★★★★★☆☆☆☆☆'.slice(5 - Math.min(5, n), 10 - Math.min(5, n)); }
 
+  // Marketplace review-event preface: the incentive disclosure must stay, the marketplace name must not (owner, 10-23).
+  var EVENT_LINE = /^\s*본 리뷰는[^\n]*리뷰 이벤트에 참여하기 위해 작성한 것입니다\.?\s*/;
+  function cleanBody(r) { return (r.body || '').replace(EVENT_LINE, ''); }
   function card(r) {
     // 2026-10-23: no marketplace name on the badge (owner request) — only the sponsored-review disclosure stays
     var label = r.isSponsored ? '<span style="' + S.badge + '">체험단 제공</span>' : '';
     var photo = (r.photos && r.photos[0]) ?
       '<img src="' + esc(r.photos[0]) + '" alt="후기 사진" style="width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:10px;margin-top:12px" loading="lazy"/>' : '';
-    var disc = r.isSponsored ? '<div style="' + S.muted + 'margin-top:8px;font-size:11.5px">※ 제품을 무상 제공받아 작성된 후기입니다.</div>' : '';
+    var note = r.isSponsored ? '※ 제품을 무상 제공받아 작성된 후기입니다.'
+      : EVENT_LINE.test(r.body || '') ? '※ 구매 고객이 캐시 지급 리뷰 이벤트에 참여해 작성한 후기입니다.' : '';
+    var disc = note ? '<div style="' + S.muted + 'margin-top:8px;font-size:11.5px">' + note + '</div>' : '';
     return '<div style="' + S.card + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<span style="' + S.star + 'font-size:15px">' + stars(r.rating) + '</span>' + label + '</div>' +
       photo +
       (r.title ? '<div style="font-weight:700;margin-top:12px">' + esc(r.title) + '</div>' : '') +
-      '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-line;word-break:keep-all">' + esc(r.body) + '</p>' +
+      '<p style="font-size:14px;line-height:1.65;margin-top:8px;white-space:pre-line;word-break:keep-all">' + esc(cleanBody(r)) + '</p>' +
       '<div style="' + S.muted + 'margin-top:10px">— ' + esc(r.authorMasked || '구매 고객') + '</div>' +
       disc + '</div>';
   }
@@ -52,7 +57,7 @@
   function updateTabCount(count) {
     try {
       var links = document.querySelectorAll('a[name="use_review"]');
-      for (var i = 0; i < links.length; i++) { var sp = links[i].querySelector('span'); if (sp) sp.textContent = count; }
+      for (var i = 0; i < links.length; i++) { var sp = links[i].querySelector('span'); if (sp) sp.textContent = '(' + count + ')'; }
     } catch (e) {}
   }
 
@@ -155,9 +160,9 @@
       .then(function (data) {
         var sum = data.summary || {};
         if (!sum.count) { box.remove(); return; }
-        var picks = (data.reviews || []).filter(function (r) { var n = (r.body || '').trim().length; return r.rating >= 5 && n >= 20 && n <= 140; }).slice(0, 3);
+        var picks = (data.reviews || []).filter(function (r) { var n = cleanBody(r).trim().length; return r.rating >= 5 && n >= 20 && n <= 140; }).slice(0, 3);
         var chips = picks.map(function (r) {
-          var t = (r.body || '').trim().replace(/\s+/g, ' ');
+          var t = cleanBody(r).trim().replace(/\s+/g, ' ');
           if (t.length > 58) t = t.slice(0, 58) + '…';
           return '<div style="flex:0 0 78%;max-width:260px;scroll-snap-align:start;background:#f7f9fc;border:1px solid #e7ebf3;border-radius:12px;padding:12px 14px">' +
             '<div style="' + S.star + 'font-size:12px">★★★★★</div>' +
@@ -191,8 +196,86 @@
     } catch (e) {}
   }
 
+  // 2026-10-23: conversion UX layer — benefit lines, Korean tab labels, group-buy countdown, light scroll motion.
+  // Truthful only: every line states a real store fact; the countdown runs to the group-buy end printed on its banner.
+  var GROUPBUY_END = { '32': '2026-10-26T23:59:59+09:00' };
+  function productNo() {
+    var m = location.search.match(/product_no=(\d+)/) || location.pathname.match(/\/(\d+)\/?(?:category|$)/);
+    return m ? m[1] : '';
+  }
+  function injectCss() {
+    if (document.getElementById('osc-ux-css')) return;
+    var css = document.createElement('style');
+    css.id = 'osc-ux-css';
+    css.textContent =
+      '.osc-reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}' +
+      '.osc-reveal.osc-on{opacity:1;transform:none}' +
+      '.osc-benefits{display:grid;gap:8px;margin:0 0 16px}' +
+      '.osc-benefit{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;background:#f4f7ff;font:600 14px/1.4 Pretendard,sans-serif;color:#1a2233;word-break:keep-all}' +
+      '.osc-benefit i{font-style:normal;font-size:17px}' +
+      '.osc-countdown{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#00112c;color:#fff;font:700 14px/1.4 Pretendard,sans-serif;display:flex;justify-content:space-between;align-items:center}' +
+      '.osc-countdown b{font-variant-numeric:tabular-nums;color:#ffd84d;font-size:16px}' +
+      '@media (prefers-reduced-motion:reduce){.osc-reveal{opacity:1;transform:none;transition:none}}';
+    document.head.appendChild(css);
+  }
+  function mountBenefits() {
+    var after = document.querySelector('.osc-topreview') || document.querySelector('.infoArea .headingArea');
+    if (!after || document.querySelector('.osc-benefits')) return !!document.querySelector('.osc-benefits');
+    var box = document.createElement('div');
+    box.className = 'osc-benefits osc-reveal';
+    box.innerHTML =
+      '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>' +
+      '<div class="osc-benefit"><i>🚚</i>무료배송</div>' +
+      '<div class="osc-benefit"><i>🛡️</i>솔리티 공식 인증 판매처 · A/S는 제조사가 직접</div>';
+    after.parentNode.insertBefore(box, after.nextSibling);
+    var end = GROUPBUY_END[productNo()];
+    if (end && Date.now() < Date.parse(end)) {
+      var cd = document.createElement('div');
+      cd.className = 'osc-countdown osc-reveal';
+      after.parentNode.insertBefore(cd, box);
+      var tick = function () {
+        var s = Math.max(0, Math.floor((Date.parse(end) - Date.now()) / 1000));
+        var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        cd.innerHTML = '<span>공구 마감까지</span><b>' + (d ? d + '일 ' : '') + pad(h) + ':' + pad(m) + ':' + pad(x) + '</b>';
+        if (s > 0) setTimeout(tick, 1000); else cd.remove();
+      };
+      tick();
+    }
+    return true;
+  }
+  function koreanTabs() {
+    var map = { 'Detail': '상세정보', 'Review': '구매후기', 'Q&A': '문의', 'Return & Delivery': '배송·교환' };
+    var links = document.querySelectorAll('#tabProduct a');
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i], num = a.querySelector('span');
+      var label = (a.childNodes[0] && a.childNodes[0].nodeType === 3) ? a.childNodes[0] : null;
+      if (label && map[label.textContent.trim()]) label.textContent = map[label.textContent.trim()] + ' ';
+      if (num) num.style.display = num.textContent.trim() === '0' ? 'none' : '';
+    }
+  }
+  var observer = null;
+  function reveal() {
+    if (!('IntersectionObserver' in window)) { document.querySelectorAll('.osc-reveal').forEach(function (e) { e.classList.add('osc-on'); }); return; }
+    if (!observer) {
+      observer = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('osc-on'); observer.unobserve(e.target); } });
+      }, { rootMargin: '0px 0px -8% 0px' });
+      // a fast fling or anchor jump can skip past a block without it ever intersecting — never leave content invisible
+      window.addEventListener('scroll', function () {
+        document.querySelectorAll('.osc-reveal:not(.osc-on)').forEach(function (el) {
+          if (el.getBoundingClientRect().top < window.innerHeight) { el.classList.add('osc-on'); observer.unobserve(el); }
+        });
+      }, { passive: true });
+    }
+    document.querySelectorAll('#prdDetail section, #prdDetail .story, #prdDetail .cont > img, .osc-benefits, .osc-countdown').forEach(function (el) {
+      if (el.dataset.oscRev) return; el.dataset.oscRev = '1'; el.classList.add('osc-reveal'); observer.observe(el);
+    });
+  }
+  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); reveal(); return ok; } catch (e) { return true; } }
+
   var tries = 0;
-  function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); if (a && b) return; if (++tries < 40) setTimeout(poll, 300); }
+  function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); var c = uxEnhance(); if (a && b && c && document.querySelector('.osc-topreview a')) { koreanTabs(); return; } if (++tries < 40) setTimeout(poll, 300); }
 
   // cafe24 쇼핑몰 공통 이용안내의 빈 "교환 및 반품 주소 -" 블록 제거 (반품주소 미설정 시 노출되는 placeholder)
   function hideEmptyExchangeAddr() {

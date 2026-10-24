@@ -202,6 +202,38 @@
   var GROUPBUY = { '32': '2026-10-26T23:59:59+09:00' };
   // 10-24 owner: the 2-pack is chosen inside the single-unit page (Cafe24 option «구성»: 1대 / 2대 세트).
   // Render the option buttons as price cards, keep exactly one selected row, preselect 1대.
+  // 10-24 owner: group-buy page gets quantity cards at plain multiples (the group-buy unit price is already the floor).
+  var QTY_CARDS = { '32': [1, 2, 3, 4] };
+  function qtyCards() {
+    var counts = QTY_CARDS[productNo()], q = document.querySelector('#totalProducts #quantity');
+    var unit = Number(window.product_price) || 0;
+    if (!counts || !q || !unit || document.querySelector('.osc-qty')) return;
+    var won = function (n) { return Number(n).toLocaleString('ko-KR') + '원'; };
+    var box = document.createElement('ul');
+    box.className = 'osc-opts osc-qty';
+    box.innerHTML = counts.map(function (n) {
+      return '<li data-n="' + n + '"><a href="#none"><span class="osc-opt-name">' + n + '개</span><span class="osc-opt-price">' + won(unit * n) + '</span></a></li>';
+    }).join('');
+    var table = document.querySelector('#totalProducts');
+    table.parentNode.insertBefore(box, table);
+    var sync = function () {
+      var v = Number(q.value) || 1, lis = box.querySelectorAll('li');
+      for (var i = 0; i < lis.length; i++) lis[i].classList.toggle('ec-product-selected', Number(lis[i].getAttribute('data-n')) === v);
+    };
+    box.addEventListener('click', function (e) {
+      var li = e.target.closest('li[data-n]');
+      if (!li) return;
+      e.preventDefault();
+      q.value = li.getAttribute('data-n');
+      ['input', 'keyup', 'change', 'blur'].forEach(function (t) { q.dispatchEvent(new Event(t, { bubbles: true })); });
+      if (window.jQuery) window.jQuery(q).trigger('change').trigger('keyup');
+      sync();
+    });
+    document.addEventListener('click', function (e) { if (e.target.closest('#totalProducts')) setTimeout(sync, 100); });
+    q.addEventListener('change', sync);
+    q.addEventListener('keyup', sync);
+    sync();
+  }
   function packOptions() {
     var ul = document.querySelector('ul.ec-product-button[option_title="구성"]');
     if (!ul || ul.dataset.osc) return;
@@ -331,7 +363,7 @@
     document.body.insertBefore(bar, document.body.firstChild);
   }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
-  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); packOptions(); return ok; } catch (e) { return true; } }
+  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); packOptions(); qtyCards(); return ok; } catch (e) { return true; } }
 
   var tries = 0;
   function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); var c = uxEnhance(); if (a && b && c && document.querySelector('.osc-topreview a')) { koreanTabs(); return; } if (++tries < 40) setTimeout(poll, 300); }

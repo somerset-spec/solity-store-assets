@@ -202,6 +202,11 @@
   var GROUPBUY = { '32': '2026-10-26T23:59:59+09:00' };
   // Single-unit product → its 2-pack product (owner 10-23: 2대 128,000원)
   var BUNDLE = { '28': { no: '33', text: '2대 세트로 사면 1대당 64,000원 (128,000원)' } };
+  var KAKAO = { channel: 'https://pf.kakao.com/_AxhfSX', chat: 'https://pf.kakao.com/_AxhfSX/chat' };
+  function kakaoLinks() {
+    var a = document.querySelectorAll('a[data-ez-item="kakao"]');
+    for (var i = 0; i < a.length; i++) a[i].href = KAKAO.channel;
+  }
   function productNo() {
     var m = location.search.match(/product_no=(\d+)/) || location.pathname.match(/\/(\d+)\/?(?:category|$)/);
     return m ? m[1] : '';
@@ -234,6 +239,7 @@
     var pack = BUNDLE[productNo()];
     if (pack) box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="/product/detail.html?product_no=' + pack.no +
       '" style="background:#00112c;color:#fff;text-decoration:none"><i>📦</i>' + pack.text + ' <b style="margin-left:auto;color:#ffd84d">보기 ›</b></a>');
+    box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="' + KAKAO.chat + '" target="_blank" rel="noopener" style="background:#fee500;color:#191919;text-decoration:none"><i>💬</i>궁금한 점은 카카오톡으로 바로 물어보세요 <b style="margin-left:auto">문의 ›</b></a>');
     after.parentNode.insertBefore(box, after.nextSibling);
     if (end && Date.now() < Date.parse(end)) {
       var cd = document.createElement('div');
@@ -322,7 +328,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  function boot() { try { firstBuyBar(); } catch (e) {} poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); kakaoLinks(); } catch (e) {} poll(); exchPoll(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

@@ -217,7 +217,7 @@
       if (!a || !price) continue;
       var save = n > 1 && single ? single * n - price : 0;
       a.innerHTML = '<span class="osc-opt-name">' + (it.option_value || a.textContent) + '</span>' +
-        '<span class="osc-opt-price">' + won(price) + (n > 1 ? '<em>1대당 ' + won(price / n) + (save > 0 ? ' · ' + won(save) + ' 아껴요' : '') + '</em>' : '') + '</span>';
+        '<span class="osc-opt-price">' + won(price) + (n > 1 ? '<em>1대당 ' + won(price / n) + '</em>' + (save > 0 ? '<b>' + won(save) + ' 절약!</b>' : '') : '') + '</span>';
     }
     ul.classList.add('osc-opts');
     ul.addEventListener('click', function (e) {
@@ -269,8 +269,10 @@
       'ul.osc-opts li{margin:0!important;float:none!important;width:auto!important;border:0!important;padding:0!important;background:none!important;outline:0!important}' +
       'ul.osc-opts li a{display:flex!important;flex-direction:column;gap:2px;height:auto!important;padding:12px 14px!important;border:1.5px solid #d7deea!important;border-radius:12px;background:#fff;text-align:left;line-height:1.35;font-family:Pretendard,sans-serif}' +
       'ul.osc-opts li.ec-product-selected a{border-color:#1f6bff!important;background:#f4f7ff;box-shadow:0 0 0 1px #1f6bff inset}' +
-      '.osc-opt-name{font-weight:700;font-size:15px;color:#1a2233}' +
-      '.osc-opt-price{font-size:14px;color:#1a2233}.osc-opt-price em{display:block;font-style:normal;font-size:12px;color:#1f6bff;font-weight:700}' +
+      'ul.osc-opts .osc-opt-name{font-weight:700!important;font-size:18px!important;color:#1a2233!important}' +
+      'ul.osc-opts .osc-opt-price{font-size:18px!important;font-weight:600!important;color:#1a2233!important}' +
+      'ul.osc-opts .osc-opt-price em{display:block;margin-top:2px;font-style:normal;font-size:15px!important;color:#1f6bff!important;font-weight:700!important}' +
+      'ul.osc-opts .osc-opt-price b{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;background:#ff3b30;color:#fff!important;font-size:14px!important;font-weight:700!important}' +
       '@media (prefers-reduced-motion:reduce){.osc-in{animation:none}}';
     document.head.appendChild(css);
   }

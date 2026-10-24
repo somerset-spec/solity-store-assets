@@ -200,8 +200,50 @@
   // Truthful only: every line states a real store fact; the countdown runs to the group-buy end printed on its banner.
   // Group-buy products (product_no → end): no discount coupon ever applies to them (owner rule), so no coupon line.
   var GROUPBUY = { '32': '2026-10-26T23:59:59+09:00' };
-  // Single-unit product → its 2-pack product (owner 10-23: 2대 128,000원)
-  var BUNDLE = { '28': { no: '33', text: '2대 세트로 사면 1대당 64,000원 (128,000원)' } };
+  // 10-24 owner: the 2-pack is chosen inside the single-unit page (Cafe24 option «구성»: 1대 / 2대 세트).
+  // Render the option buttons as price cards, keep exactly one selected row, preselect 1대.
+  function packOptions() {
+    var ul = document.querySelector('ul.ec-product-button[option_title="구성"]');
+    if (!ul || ul.dataset.osc) return;
+    ul.dataset.osc = '1';
+    var stock = {};
+    try { stock = JSON.parse(window.option_stock_data || '{}'); } catch (e) {}
+    var won = function (n) { return Number(n).toLocaleString('ko-KR') + '원'; };
+    var lis = ul.querySelectorAll('li[option_value]');
+    var single = Number((stock[lis[0] && lis[0].getAttribute('option_value')] || {}).option_price) || 0;
+    for (var i = 0; i < lis.length; i++) {
+      var li = lis[i], it = stock[li.getAttribute('option_value')] || {}, a = li.querySelector('a');
+      var n = /2대/.test(it.option_value || '') ? 2 : 1, price = Number(it.option_price) || 0;
+      if (!a || !price) continue;
+      var save = n > 1 && single ? single * n - price : 0;
+      a.innerHTML = '<span class="osc-opt-name">' + (it.option_value || a.textContent) + '</span>' +
+        '<span class="osc-opt-price">' + won(price) + (n > 1 ? '<em>1대당 ' + won(price / n) + (save > 0 ? ' · ' + won(save) + ' 아껴요' : '') + '</em>' : '') + '</span>';
+    }
+    ul.classList.add('osc-opts');
+    ul.addEventListener('click', function (e) {
+      var li = e.target.closest('li[option_value]');
+      if (!li) return;
+      var code = li.getAttribute('option_value'), already = false;
+      var rows = document.querySelectorAll('#totalProducts .option_product');
+      for (var j = 0; j < rows.length; j++) {
+        var id = rows[j].querySelector('.option_box_id');
+        if (id && id.value === code) { already = true; continue; }
+        var del = rows[j].querySelector('.option_box_del');
+        if (del) del.click();
+      }
+      if (already) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+    // preselect 1대 only after Cafe24's option scripts are ready (an early click throws inside Cafe24 and adds no row)
+    var tries = 0;
+    var pick = function () {
+      if (document.querySelector('#totalProducts .option_product') || !lis[0]) return;
+      lis[0].classList.remove('ec-product-selected');
+      lis[0].querySelector('a').click();
+      if (++tries < 6) setTimeout(pick, 700);
+    };
+    if (document.readyState === 'complete') setTimeout(pick, 800);
+    else window.addEventListener('load', function () { setTimeout(pick, 800); });
+  }
   var KAKAO = { channel: 'https://pf.kakao.com/_AxhfSX', chat: 'https://pf.kakao.com/_AxhfSX/chat' };
   function kakaoLinks() {
     var a = document.querySelectorAll('a[data-ez-item="kakao"]');
@@ -223,6 +265,12 @@
       '.osc-benefit i{font-style:normal;font-size:17px}' +
       '.osc-countdown{margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#00112c;color:#fff;font:700 14px/1.4 Pretendard,sans-serif;display:flex;justify-content:space-between;align-items:center}' +
       '.osc-countdown b{font-variant-numeric:tabular-nums;color:#ffd84d;font-size:16px}' +
+      'ul.osc-opts{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 8px}' +
+      'ul.osc-opts li{margin:0!important;float:none!important;width:auto!important;border:0!important;padding:0!important;background:none!important;outline:0!important}' +
+      'ul.osc-opts li a{display:flex!important;flex-direction:column;gap:2px;height:auto!important;padding:12px 14px!important;border:1.5px solid #d7deea!important;border-radius:12px;background:#fff;text-align:left;line-height:1.35;font-family:Pretendard,sans-serif}' +
+      'ul.osc-opts li.ec-product-selected a{border-color:#1f6bff!important;background:#f4f7ff;box-shadow:0 0 0 1px #1f6bff inset}' +
+      '.osc-opt-name{font-weight:700;font-size:15px;color:#1a2233}' +
+      '.osc-opt-price{font-size:14px;color:#1a2233}.osc-opt-price em{display:block;font-style:normal;font-size:12px;color:#1f6bff;font-weight:700}' +
       '@media (prefers-reduced-motion:reduce){.osc-in{animation:none}}';
     document.head.appendChild(css);
   }
@@ -234,11 +282,7 @@
     box.className = 'osc-benefits osc-in';
     box.innerHTML =
       (end ? '' : '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>') +
-      '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>' +
-      '<div class="osc-benefit"><i>🛡️</i>솔리티 공식 인증 판매처 · A/S는 제조사가 직접</div>';
-    var pack = BUNDLE[productNo()];
-    if (pack) box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="/product/detail.html?product_no=' + pack.no +
-      '" style="background:#00112c;color:#fff;text-decoration:none"><i>📦</i>' + pack.text + ' <b style="margin-left:auto;color:#ffd84d">보기 ›</b></a>');
+      '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>';
     box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="' + KAKAO.chat + '" target="_blank" rel="noopener" style="background:#fee500;color:#191919;text-decoration:none"><i>💬</i>궁금한 점은 카카오톡으로 바로 물어보세요 <b style="margin-left:auto">문의 ›</b></a>');
     after.parentNode.insertBefore(box, after.nextSibling);
     if (end && Date.now() < Date.parse(end)) {
@@ -285,7 +329,7 @@
     document.body.insertBefore(bar, document.body.firstChild);
   }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
-  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); return ok; } catch (e) { return true; } }
+  function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); packOptions(); return ok; } catch (e) { return true; } }
 
   var tries = 0;
   function poll() { var a = run(); var b = mountTopSummary(); hideInternalNotes(); var c = uxEnhance(); if (a && b && c && document.querySelector('.osc-topreview a')) { koreanTabs(); return; } if (++tries < 40) setTimeout(poll, 300); }

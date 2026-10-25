@@ -387,23 +387,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  // 10-26: GA4 had page views only, no purchases. On Cafe24's order-complete page, send one GA4 «purchase»
-  // from Cafe24's own order data so every order carries its traffic source. Naver Pay completes off-site and is not seen here.
-  function ga4Purchase() {
-    if (!/\/order\/order_result\.html/.test(location.pathname) || typeof window.gtag !== 'function') return;
-    var d = window.EC_FRONT_EXTERNAL_SCRIPT_VARIABLE_DATA;
-    if (!d || !d.order_id) return;
-    var key = 'osc_ga4_purchase_' + d.order_id;
-    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) {}
-    var items = (d.order_product || []).map(function (p) {
-      return { item_id: String(p.product_no || p.product_code || ''), item_name: p.product_name, price: Number(p.product_price) || 0, quantity: Number(p.quantity) || 1 };
-    });
-    window.gtag('event', 'purchase', {
-      transaction_id: String(d.order_id), currency: 'KRW',
-      value: Number(d.payed_amount != null ? d.payed_amount : d.total_order_price) || 0, items: items
-    });
-  }
-  function boot() { try { firstBuyBar(); kakaoLinks(); ga4Purchase(); } catch (e) {} poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); kakaoLinks(); } catch (e) {} poll(); exchPoll(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

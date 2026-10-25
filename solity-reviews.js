@@ -296,11 +296,24 @@
         var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
         var pad = function (n) { return (n < 10 ? '0' : '') + n; };
         cd.innerHTML = '<span>공구 마감까지</span><b>' + (d ? d + '일 ' : '') + pad(h) + ':' + pad(m) + ':' + pad(x) + '</b>';
-        if (s > 0) setTimeout(tick, 1000); else cd.remove();
+        if (s > 0) setTimeout(tick, 1000); else { cd.remove(); closeGroupBuy(); }
       };
       tick();
-    }
+    } else if (end) closeGroupBuy();
     return true;
+  }
+  // 10-25 owner: the group-buy closes at its end time. Hide every way to buy and point to the regular product;
+  // the admin «판매 안 함» switch is flipped separately as the server-side lock.
+  var REGULAR_PRODUCT = '/product/detail.html?product_no=28';
+  function closeGroupBuy() {
+    if (document.querySelector('.osc-closed')) return;
+    var css = document.createElement('style');
+    css.textContent = '#totalProducts,ul.osc-opts.osc-qty,.xans-product-action,#NaverChk_Button,.action_button,.osc-countdown{display:none!important}';
+    document.head.appendChild(css);
+    var after = document.querySelector('.osc-benefits') || document.querySelector('.infoArea .headingArea');
+    if (!after) return;
+    after.insertAdjacentHTML('beforebegin', '<div class="osc-closed osc-countdown" style="display:block!important;text-align:center">' +
+      '공동구매가 마감되었습니다<br><a href="' + REGULAR_PRODUCT + '" style="color:#ffd84d;font-weight:700">솔리티 홈캠 SC400 구매하러 가기 ›</a></div>');
   }
   function koreanTabs() {
     var map = { 'Detail': '상세정보', 'Review': '구매후기', 'Q&A': '문의', 'Return & Delivery': '배송·교환' };

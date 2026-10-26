@@ -343,6 +343,40 @@
     bar.innerHTML = '<span style="color:#ffd84d">첫 구매 3,000원 할인</span> · 회원가입하면 바로 드려요 →';
     document.body.insertBefore(bar, document.body.firstChild);
   }
+  // Buy-now login page (noMember=1): Naver Pay on top, guest checkout as a form-width button (owner 10-26).
+  // Naver Pay goes through the basket: the buy-now item is already there and the basket has the official Npay button.
+  var NPAY_ANCHOR = 'NaverChk_Button';
+  function loginCheckout() {
+    if (!/\/member\/login\.html$/.test(location.pathname) || !/[?&]noMember=1(&|$)/.test(location.search)) return;
+    var box = document.querySelector('.osc-nomember');
+    if (!box || box.querySelector('.osc-npay-login')) return;
+    var css = document.createElement('style');
+    css.textContent =
+      '.osc-nomember{max-width:400px;margin-left:auto !important;margin-right:auto !important}' +
+      '.osc-nomember .osc-nomember__btn{border-radius:8px}' +
+      '.osc-nomember .osc-npay-login{display:flex;align-items:center;justify-content:center;gap:10px;height:60px;border-radius:8px;background:#03C75A;color:#fff !important;font:700 17px/1 Pretendard,sans-serif;text-decoration:none}' +
+      '.osc-nomember .osc-npay-login:hover,.osc-nomember .osc-npay-login:focus-visible{background:#02B351}' +
+      '.osc-npay-login b{font-size:20px;font-weight:800;letter-spacing:-.5px}' +
+      '.osc-npay-login__txt{margin:8px 0 14px;font-size:13px;color:#555;text-align:center;word-break:keep-all}';
+    document.head.appendChild(css);
+    var a = document.createElement('a');
+    a.className = 'osc-npay-login';
+    a.href = '/order/basket.html#' + NPAY_ANCHOR;
+    a.innerHTML = '<b>N pay</b><span>네이버페이로 바로 구매</span>';
+    var txt = document.createElement('p');
+    txt.className = 'osc-npay-login__txt';
+    txt.textContent = '장바구니에서 초록 네이버페이 버튼을 한 번 더 누르면 결제창이 열려요.';
+    box.insertBefore(txt, box.firstChild);
+    box.insertBefore(a, txt);
+  }
+  // Basket opened from that button: bring the official Npay button into view once Naver has drawn it.
+  var nt = 0;
+  function npayScroll() {
+    if (location.hash !== '#' + NPAY_ANCHOR || !/\/order\/basket\.html$/.test(location.pathname)) return;
+    var b = document.getElementById(NPAY_ANCHOR);
+    if (b && b.children.length) { (document.querySelector('.osc-npay-hint') || b).scrollIntoView({ block: 'center' }); return; }
+    if (++nt < 25) setTimeout(npayScroll, 200);
+  }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
   function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); qtyCards(); return ok; } catch (e) { return true; } }
 
@@ -387,7 +421,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  function boot() { try { firstBuyBar(); kakaoLinks(); } catch (e) {} poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); kakaoLinks(); loginCheckout(); npayScroll(); } catch (e) {} poll(); exchPoll(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

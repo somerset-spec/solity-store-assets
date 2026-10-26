@@ -345,7 +345,8 @@
   }
   // Buy-now login page (noMember=1): Naver Pay on top, guest checkout as a form-width button (owner 10-26).
   // Naver Pay goes through the basket: the buy-now item is already there and the basket has the official Npay button.
-  var NPAY_ANCHOR = 'NaverChk_Button';
+  // The hash must not match an element id: the browser's own anchor jump put the button under the header.
+  var NPAY_ANCHOR = 'npay';
   function loginCheckout() {
     if (!/\/member\/login\.html$/.test(location.pathname) || !/[?&]noMember=1(&|$)/.test(location.search)) return;
     var box = document.querySelector('.osc-nomember');
@@ -373,8 +374,13 @@
   var nt = 0;
   function npayScroll() {
     if (location.hash !== '#' + NPAY_ANCHOR || !/\/order\/basket\.html$/.test(location.pathname)) return;
-    var b = document.getElementById(NPAY_ANCHOR);
-    if (b && b.children.length) { (document.querySelector('.osc-npay-hint') || b).scrollIntoView({ block: 'center' }); return; }
+    var b = document.getElementById('NaverChk_Button');
+    if (b && b.children.length) {
+      // Measured from the page top while still at scroll 0, so the sticky summary column reports its natural place.
+      var t = (document.querySelector('.osc-npay-hint') || b).getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo(0, Math.max(0, t - window.innerHeight / 3));
+      return;
+    }
     if (++nt < 25) setTimeout(npayScroll, 200);
   }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling

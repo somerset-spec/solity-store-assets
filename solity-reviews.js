@@ -181,9 +181,34 @@
           if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
         requestAnimationFrame(function () { box.style.opacity = '1'; box.style.transform = 'none'; });
+        if ((sum.photoCount || 0) >= 4) mountPhotoStrip(box, clientId, productId, sum.photoCount);
       })
       .catch(function () { box.remove(); });
     return true;
+  }
+  // 10-27 owner (benchmark 더퓨어·바디랩): customer photo reviews near the buy area; only real photos, shown when 4+ exist.
+  function mountPhotoStrip(box, clientId, productId, total) {
+    fetch(API_BASE + '/api/reviews/' + encodeURIComponent(clientId) + '/' + encodeURIComponent(productId) + '?page=1&sort=photo', { credentials: 'omit' })
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (data) {
+        var pics = (data.reviews || []).filter(function (r) { return r.photos && r.photos[0]; }).slice(0, 4);
+        if (pics.length < 4) return;
+        var strip = document.createElement('a');
+        strip.href = '#none';
+        strip.className = 'osc-photostrip';
+        strip.style.cssText = 'display:block;margin-top:12px;text-decoration:none;color:#1a2233';
+        strip.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-bottom:8px"><span>사진 후기 ' + Number(total).toLocaleString() + '장</span><span style="font-weight:500;color:#5b6577">전체 보기 ›</span></div>' +
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">' + pics.map(function (r) {
+            return '<img src="' + esc(r.photos[0]) + '" alt="고객 사진 후기" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#f4f7ff">';
+          }).join('') + '</div>';
+        strip.onclick = function (e) {
+          e.preventDefault();
+          var target = document.querySelector('#prdDetail [id="solity-reviews"]') || document.querySelector('[id="solity-reviews"]');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        box.appendChild(strip);
+      })
+      .catch(function () {});
   }
 
   // 2026-10-23: internal editor note leaked into the product description — hide it until the description is cleaned
@@ -273,18 +298,103 @@
       'ul.osc-opts .osc-opt-price{font-size:18px!important;font-weight:600!important;color:#1a2233!important}' +
       'ul.osc-opts .osc-opt-price em{display:block;margin-top:2px;font-style:normal;font-size:15px!important;color:#1f6bff!important;font-weight:700!important}' +
       'ul.osc-opts .osc-opt-price b{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;background:#ff3b30;color:#fff!important;font-size:14px!important;font-weight:700!important}' +
+      '.osc-price{display:grid;gap:12px;margin:0 0 14px;font-family:Pretendard,sans-serif;color:#1a2233}' +
+      '.osc-why{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:15px;line-height:1.5;word-break:keep-all}' +
+      '.osc-why li::before{content:"\\2713  ";color:#1f6bff;font-weight:700}' +
+      '.osc-why em{font-style:normal;color:#1f6bff;font-weight:700}' +
+      '.osc-price-now s{display:block;color:#98a0ab;font-size:14px}' +
+      '.osc-price-now div{display:flex;align-items:baseline;gap:8px}' +
+      '.osc-price-now b{color:#ff3b30;font-size:26px;font-weight:800}' +
+      '.osc-price-now strong{font-size:26px;font-weight:800}' +
+      '.osc-coupon{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid #d7deea;border-radius:12px;text-decoration:none;color:#1a2233}' +
+      '.osc-coupon small{display:block;font-size:13px;color:#5b6577}' +
+      '.osc-coupon strong{font-size:20px;font-weight:800;color:#ff3b30}' +
+      '.osc-coupon span{flex:none;background:#1a2233;color:#fff;font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px}' +
+      '.osc-ship b{font-variant-numeric:tabular-nums;color:#1f6bff}' +
+      '.osc-specs-toggle{display:flex;justify-content:space-between;width:100%;margin:0 0 12px;padding:12px 2px;border:0;border-top:1px solid #e7ebf3;border-bottom:1px solid #e7ebf3;background:none;font:600 14px/1.4 Pretendard,sans-serif;color:#5b6577;cursor:pointer}' +
+      '#tabProduct ul li a span{position:static!important;display:inline;margin-left:2px;padding:0!important;background:none!important;color:inherit!important;font-size:inherit!important;line-height:inherit!important;width:auto!important;height:auto!important}' +
+      '.osc-cart-cta{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;max-width:420px;margin:16px auto 8px;padding:12px;border:1px solid #d7deea;border-radius:12px;text-decoration:none;color:#1a2233;font-family:Pretendard,sans-serif}' +
+      '.osc-cart-cta img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#f4f7ff}' +
+      '.osc-cart-cta b{display:block;font-size:15px}' +
+      '.osc-cart-cta small{display:block;margin-top:2px;font-size:13px;color:#5b6577;word-break:keep-all}' +
+      '.osc-cart-cta span{grid-column:1/-1;display:block;text-align:center;background:#1f6bff;color:#fff;font-weight:700;padding:12px;border-radius:10px}' +
       '@media (prefers-reduced-motion:reduce){.osc-in{animation:none}}';
     document.head.appendChild(css);
   }
-  function mountBenefits() {
+  // 10-27 owner (skin benchmark: 더퓨어·바디랩): under the title — 3 reasons, big price, price after the first-purchase coupon.
+  // Prices are read from the page's own «소비자가»/«판매가» rows; the Cafe24 info table folds behind a toggle.
+  var WHY = {
+    '28': ['쉴 땐 렌즈를 가리는 <em>안심모드</em>', '<em>2.5K QHD · 360°</em> 회전 · 야간 촬영', '클라우드 구독료를 <em>따로 낼 필요가 없어요</em>']
+  };
+  var FIRST_BUY_COUPON = 3000;
+  function rowWon(label) {
+    var rows = document.querySelectorAll('.infoArea .xans-product-detaildesign tr');
+    for (var i = 0; i < rows.length; i++) {
+      var th = rows[i].querySelector('th');
+      if (th && th.textContent.replace(/\s/g, '') === label) {
+        var m = (rows[i].querySelector('td') || rows[i]).textContent.replace(/,/g, '').match(/(\d+)\s*원/);
+        return m ? Number(m[1]) : 0;
+      }
+    }
+    return 0;
+  }
+  function priceBlock() {
+    var pno = productNo(), why = WHY[pno];
+    if (!why || GROUPBUY[pno] || document.querySelector('.osc-price')) return;
+    var specs = document.querySelector('.infoArea .xans-product-detaildesign');
+    var sale = Number(window.product_price) || rowWon('판매가'), list = rowWon('소비자가');
+    if (!specs || !sale) return;
+    var won = function (n) { return Number(n).toLocaleString('ko-KR') + '원'; };
+    var pct = list > sale ? Math.round((1 - sale / list) * 100) : 0;
+    var box = document.createElement('div');
+    box.className = 'osc-price osc-in';
+    box.innerHTML =
+      '<ul class="osc-why">' + why.map(function (w) { return '<li>' + w + '</li>'; }).join('') + '</ul>' +
+      '<div class="osc-price-now">' + (pct ? '<s>' + won(list) + '</s>' : '') +
+      '<div>' + (pct ? '<b>' + pct + '%</b>' : '') + '<strong>' + won(sale) + '</strong></div></div>' +
+      '<a class="osc-coupon" href="/member/agreement.html"><div><small>첫 구매 쿠폰 적용 시 (1개 기준)</small><strong>' + won(sale - FIRST_BUY_COUPON) + '</strong></div><span>쿠폰 받기</span></a>';
     var after = document.querySelector('.osc-topreview') || document.querySelector('.infoArea .headingArea');
+    after.parentNode.insertBefore(box, after.nextSibling);
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'osc-specs-toggle';
+    toggle.innerHTML = '<span>상품 정보 (요약 · 가격 · 배송)</span><span>펼치기 ▾</span>';
+    toggle.onclick = function () {
+      var open = specs.style.display !== 'none';
+      specs.style.display = open ? 'none' : '';
+      toggle.lastChild.textContent = open ? '펼치기 ▾' : '접기 ▴';
+    };
+    specs.style.display = 'none';
+    specs.parentNode.insertBefore(toggle, specs);
+  }
+  // Same-day dispatch: weekdays, order before 12:00 KST. Holidays ship the next business day — keep this list current.
+  var HOLIDAYS = ['2026-12-25', '2027-01-01'];
+  var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  function kst(t) { return new Date(t + 9 * 3600000); }
+  function ymd(d) { return d.toISOString().slice(0, 10); }
+  function isShipDay(d) { var w = d.getUTCDay(); return w > 0 && w < 6 && HOLIDAYS.indexOf(ymd(d)) < 0; }
+  function shipText() {
+    var now = Date.now(), k = kst(now), cut = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate(), 3);
+    if (isShipDay(k) && now < cut) {
+      var s = Math.floor((cut - now) / 1000), pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      return '무료배송 · <b>' + pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60) + '</b> 안에 주문하면 오늘 출발';
+    }
+    var d = kst(now);
+    do { d = new Date(d.getTime() + 86400000); } while (!isShipDay(d));
+    return '무료배송 · 지금 주문하면 <b>' + (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일(' + DAYS[d.getUTCDay()] + ')</b> 출발';
+  }
+  function mountBenefits() {
+    priceBlock();
+    var after = document.querySelector('.osc-price') || document.querySelector('.osc-topreview') || document.querySelector('.infoArea .headingArea');
     if (!after || document.querySelector('.osc-benefits')) return !!document.querySelector('.osc-benefits');
     var box = document.createElement('div');
     var end = GROUPBUY[productNo()];
     box.className = 'osc-benefits osc-in';
     box.innerHTML =
-      (end ? '' : '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>') +
-      '<div class="osc-benefit"><i>🚚</i>무료배송 · 평일 낮 12시 전 주문 시 당일 출고</div>';
+      (end || document.querySelector('.osc-price') ? '' : '<div class="osc-benefit"><i>🎁</i>회원가입하면 바로 쓰는 3,000원 할인 쿠폰</div>') +
+      '<div class="osc-benefit osc-ship"><i>🚚</i><span>' + shipText() + '</span></div>';
+    var shipLine = box.querySelector('.osc-ship span');
+    setInterval(function () { shipLine.innerHTML = shipText(); }, 1000);
     box.insertAdjacentHTML('beforeend', '<a class="osc-benefit" href="' + KAKAO.chat + '" target="_blank" rel="noopener" style="background:#fee500;color:#191919;text-decoration:none"><i>💬</i>궁금한 점은 카카오톡으로 바로 물어보세요 <b style="margin-left:auto">문의 ›</b></a>');
     after.parentNode.insertBefore(box, after.nextSibling);
     if (end && Date.now() < Date.parse(end)) {
@@ -305,6 +415,7 @@
   // 10-25 owner: the group-buy closes at its end time. Hide every way to buy and point to the regular product;
   // the admin «판매 안 함» switch is flipped separately as the server-side lock.
   var REGULAR_PRODUCT = '/product/detail.html?product_no=28';
+  var REGULAR_IMAGE = 'https://ecimg.cafe24img.com/pg3054b76622491053/rootin01/web/product/big/20260618/9a31c877054300fb08970f558a16eadd.png';
   function closeGroupBuy() {
     if (document.querySelector('.osc-closed')) return;
     var css = document.createElement('style');
@@ -383,6 +494,22 @@
     }
     if (++nt < 25) setTimeout(npayScroll, 200);
   }
+  // 10-27 owner (benchmark 바디랩): an empty basket points back to the product; the overseas-shipping tab is hidden
+  // (the store does not ship abroad).
+  function cartCta() {
+    if (!/\/order\/basket\.html$/.test(location.pathname)) return;
+    var tabs = document.querySelectorAll('ul.menu li');
+    for (var i = 0; i < tabs.length; i++) if (/해외배송상품\s*\(0\)/.test(tabs[i].textContent)) tabs[i].style.display = 'none';
+    var empty = document.querySelector('p.xans-order-empty');
+    if (!empty || empty.offsetParent === null || document.querySelector('.osc-cart-cta')) return;
+    injectCss();
+    var a = document.createElement('a');
+    a.className = 'osc-cart-cta';
+    a.href = REGULAR_PRODUCT;
+    a.innerHTML = '<img src="' + REGULAR_IMAGE + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
+      '<div><b>솔리티 홈캠 SC400</b><small>69,000원 · 무료배송</small></div><span>SC400 보러 가기</span>';
+    empty.parentNode.insertBefore(a, empty.nextSibling);
+  }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
   function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); qtyCards(); return ok; } catch (e) { return true; } }
 
@@ -427,7 +554,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  function boot() { try { firstBuyBar(); kakaoLinks(); loginCheckout(); npayScroll(); } catch (e) {} poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); kakaoLinks(); loginCheckout(); npayScroll(); cartCta(); } catch (e) {} poll(); exchPoll(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

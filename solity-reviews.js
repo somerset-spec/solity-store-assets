@@ -510,6 +510,32 @@
       '<div><b>솔리티 홈캠 SC400</b><small>69,000원 · 무료배송</small></div><span>SC400 보러 가기</span>';
     empty.parentNode.insertBefore(a, empty.nextSibling);
   }
+  // 10-31 owner «더 명확하게 파악»: Meta counts buy-now as AddToCart, so split the steps between the product page and
+  // the order form into custom pixel events (event name = step, readable from the pixel's per-event stats).
+  function step(name) {
+    try {
+      if (window.fbq) { window.fbq('trackCustom', name); return; }
+      setTimeout(function () { if (window.fbq) window.fbq('trackCustom', name); }, 2000);
+    } catch (e) {}
+  }
+  function funnelSteps() {
+    var path = location.pathname, onLogin = /\/member\/login\.html$/.test(path) && /[?&]noMember=1(&|$)/.test(location.search);
+    if (onLogin) step('OscLoginWall');
+    if (/\/order\/basket\.html$/.test(path)) step('OscBasketView');
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest && e.target.closest('a,button');
+      if (!el) return;
+      var t = el.textContent.replace(/\s+/g, '');
+      if (el.closest('#NaverChk_Button')) step('OscNpayClick');
+      else if (el.closest('.osc-npay-login')) step('OscLoginNpay');
+      else if (el.closest('.osc-nomember')) step('OscLoginGuest');
+      else if (onLogin && /로그인/.test(t)) step('OscLoginMember');
+      // the buy buttons carry hidden labels («바로구매예약주문REGULARDELIVERY»), so match the start only
+      else if (/\/product\/detail\.html$/.test(path) && /^바로구매/.test(t)) step('OscBuyNowClick');
+      else if (/\/product\/detail\.html$/.test(path) && /^장바구니담기/.test(t)) step('OscAddCartClick');
+      else if (/\/order\/basket\.html$/.test(path) && /주문하기/.test(t)) step('OscBasketOrder');
+    }, true);
+  }
   // 10-23: scroll-tied reveal on detail blocks removed — owner saw stutter while scrolling
   function uxEnhance() { try { injectCss(); var ok = mountBenefits(); koreanTabs(); koreanButtons(); qtyCards(); return ok; } catch (e) { return true; } }
 
@@ -554,7 +580,7 @@
   var et = 0;
   function exchPoll() { hideEmptyExchangeAddr(); fixGuideTopMargin(); if (++et < 30) setTimeout(exchPoll, 400); }
 
-  function boot() { try { firstBuyBar(); kakaoLinks(); loginCheckout(); npayScroll(); cartCta(); } catch (e) {} poll(); exchPoll(); }
+  function boot() { try { firstBuyBar(); kakaoLinks(); loginCheckout(); npayScroll(); cartCta(); funnelSteps(); } catch (e) {} poll(); exchPoll(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
